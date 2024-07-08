@@ -1,5 +1,5 @@
 import time, os, torch, argparse, warnings, glob
-
+import matplotlib.pyplot as plt
 from dataLoader import train_loader, val_loader
 from utils.tools import *
 from talkNet import talkNet
@@ -65,11 +65,12 @@ def main():
         s = talkNet(epoch = epoch, **vars(args))
 
     mAPs = []
+    losses = []
     scoreFile = open(args.scoreSavePath, "a+")
 
     while(1):        
         loss, lr = s.train_network(epoch = epoch, loader = trainLoader, **vars(args))
-        
+        losses.append(loss)
         if epoch % args.testInterval == 0:        
             s.saveParameters(args.modelSavePath + "/model_%04d.model"%epoch)
             mAPs.append(s.evaluate_network(epoch = epoch, loader = valLoader, **vars(args)))
@@ -81,6 +82,18 @@ def main():
             quit()
 
         epoch += 1
+    
+    timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+    epochs = list(range(1, epoch + 1))
+    plt.figure()
+    plt.plot(epochs, losses, label='Loss')
+    plt.plot(epochs, mAPs, label='Accuracy(mAP)')
+    #plt.plot(epochs, accuracies, label='Accuracy')
+    plt.xlabel('Epochs')
+    plt.ylabel('Value')
+    plt.legend()
+    plt.title('Training Loss and Accuracy over Epochs')
+    plt.show()
 
 if __name__ == '__main__':
     main()
