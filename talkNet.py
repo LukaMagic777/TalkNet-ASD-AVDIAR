@@ -77,7 +77,7 @@ class talkNet(nn.Module):
         evalRes.to_csv(evalCsvSave, index=False)
         cmd = "python -O utils/get_ava_active_speaker_performance.py -g %s -p %s "%(evalOrig, evalCsvSave)
         print(len(str(subprocess.run(cmd, shell=True, capture_output =True).stdout).split(' ')))
-        mAP = float(str(subprocess.run(cmd, shell=True, capture_output =True).stdout).split(' ')[2][:5])
+        mAP = float(str(subprocess.run(cmd, shell=True, capture_output =True).stdout).split(' ')[0][:5])
         return mAP
 
     def saveParameters(self, path):
