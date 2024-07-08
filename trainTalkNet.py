@@ -93,6 +93,10 @@ def main():
     plt.ylabel('Value')
     plt.legend()
     plt.title('Training Loss and Accuracy over Epochs')
+    directory = args.savePath
+    filename = 'TalkNetTraining.png'
+    full_path = os.path.join(directory, filename)
+    plt.savefig(full_path, format='png')
     plt.show()
 
 if __name__ == '__main__':
