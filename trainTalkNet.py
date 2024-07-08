@@ -3,6 +3,15 @@ import matplotlib.pyplot as plt
 from dataLoader import train_loader, val_loader
 from utils.tools import *
 from talkNet import talkNet
+import io
+from PIL import Image
+
+def fig2img(fig): 
+    buf = io.BytesIO() 
+    fig.savefig(buf) 
+    buf.seek(0) 
+    img = Image.open(buf) 
+    return img
 
 def main():
     # The structure of this code is learnt from https://github.com/clovaai/voxceleb_trainer
@@ -86,18 +95,18 @@ def main():
     timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
     epochs = list(range(1, epoch + 1))
     plt.figure()
-    plt.plot(epochs, losses, label='Loss')
-    plt.plot(epochs, mAPs, label='Accuracy(mAP)')
-    #plt.plot(epochs, accuracies, label='Accuracy')
     plt.xlabel('Epochs')
     plt.ylabel('Value')
     plt.legend()
     plt.title('Training Loss and Accuracy over Epochs')
+    plt.plot(epochs, losses, label='Loss')
+    plt.plot(epochs, mAPs, label='Accuracy(mAP)')
     directory = args.savePath
     filename = 'TalkNetTraining.png'
     full_path = os.path.join(directory, filename)
-    plt.savefig(full_path, format='png')
-    plt.show()
+    fig = plt.gcf()
+    img = fig2img(fig)
+    img.save(full_path)
 
 if __name__ == '__main__':
     main()
