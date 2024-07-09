@@ -100,7 +100,6 @@ def main():
             directory = args.savePath
             filename = 'TalkNetTraining.png'
             full_path = os.path.join(directory, filename)
-            print(full_path)
             fig = plt.gcf()
             img = fig2img(fig)
             img.save(full_path)
