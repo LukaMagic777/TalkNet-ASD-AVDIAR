@@ -88,25 +88,27 @@ def main():
             scoreFile.flush()
 
         if epoch >= args.maxEpoch:
+            timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+            epochs = list(range(1, epoch + 1))
+            plt.figure()
+            plt.xlabel('Epochs')
+            plt.ylabel('Value')
+            plt.legend()
+            plt.title('Training Loss and Accuracy over Epochs')
+            plt.plot(epochs, losses, label='Loss')
+            plt.plot(epochs, mAPs, label='Accuracy(mAP)')
+            directory = args.savePath
+            filename = 'TalkNetTraining.png'
+            full_path = os.path.join(directory, filename)
+            print(full_path)
+            fig = plt.gcf()
+            img = fig2img(fig)
+            img.save(full_path)
+            plt.show()
             quit()
 
         epoch += 1
     
-    timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
-    epochs = list(range(1, epoch + 1))
-    plt.figure()
-    plt.xlabel('Epochs')
-    plt.ylabel('Value')
-    plt.legend()
-    plt.title('Training Loss and Accuracy over Epochs')
-    plt.plot(epochs, losses, label='Loss')
-    plt.plot(epochs, mAPs, label='Accuracy(mAP)')
-    directory = args.savePath
-    filename = 'TalkNetTraining.png'
-    full_path = os.path.join(directory, filename)
-    fig = plt.gcf()
-    img = fig2img(fig)
-    img.save(full_path)
 
 if __name__ == '__main__':
     main()
