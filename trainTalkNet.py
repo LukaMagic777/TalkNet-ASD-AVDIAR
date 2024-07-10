@@ -92,18 +92,30 @@ def main():
             epochs = list(range(1, epoch + 1))
             plt.figure()
             plt.xlabel('Epochs')
-            plt.ylabel('Value')
+            plt.ylabel('Accuracy')
             plt.legend()
-            plt.title('Training Loss and Accuracy over Epochs')
-            plt.plot(epochs, losses, label='Loss')
+            plt.title('Accuracy over 50 Epochs')
             plt.plot(epochs, mAPs, label='Accuracy(mAP)')
             directory = args.savePath
-            filename = 'TalkNetTraining.png'
+            filename = 'Accuracy.png'
             full_path = os.path.join(directory, filename)
             fig = plt.gcf()
             img = fig2img(fig)
             img.save(full_path)
-            plt.show()
+
+            plt.figure()
+            plt.xlabel('Epochs')
+            plt.ylabel('Loss')
+            plt.legend()
+            plt.title('Loss over 50 Epochs')
+            plt.plot(epochs, losses, label='Loss')
+            directory = args.savePath
+            filename = 'Loss.png'
+            full_path = os.path.join(directory, filename)
+            fig = plt.gcf()
+            img = fig2img(fig)
+            img.save(full_path)
+            
             quit()
 
         epoch += 1
