@@ -95,8 +95,7 @@ def main():
             plt.xlabel('Epochs')
             plt.ylabel('Accuracy')
             plt.legend()
-            plt.title('Accuracy over 50 Epochs')
-
+            plt.title(f'Accuracy over {args.maxEpoch} Epochs')
             # Second subplot for Loss
             plt.subplot(1, 2, 2)  # 2 rows, 1 column, 2nd subplot
             plt.plot(epochs, losses, label='Loss')
