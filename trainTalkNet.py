@@ -90,31 +90,31 @@ def main():
         if epoch >= args.maxEpoch:
             timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
             epochs = list(range(1, epoch + 1))
-            plt.figure()
+            plt.subplot(1, 2, 1)  # 2 rows, 1 column, 1st subplot
+            plt.plot(epochs, mAPs, label='Accuracy(mAP)')
             plt.xlabel('Epochs')
             plt.ylabel('Accuracy')
             plt.legend()
             plt.title('Accuracy over 50 Epochs')
-            plt.plot(epochs, mAPs, label='Accuracy(mAP)')
-            directory = args.savePath
-            filename = 'Accuracy.png'
-            full_path = os.path.join(directory, filename)
-            fig = plt.gcf()
-            img = fig2img(fig)
-            img.save(full_path)
 
-            plt.figure()
+            # Second subplot for Loss
+            plt.subplot(1, 2, 2)  # 2 rows, 1 column, 2nd subplot
+            plt.plot(epochs, losses, label='Loss')
             plt.xlabel('Epochs')
             plt.ylabel('Loss')
             plt.legend()
             plt.title('Loss over 50 Epochs')
-            plt.plot(epochs, losses, label='Loss')
+
+            # Adjust layout
+            plt.tight_layout()
+
+            # Save the combined plot
             directory = args.savePath
-            filename = 'Loss.png'
+            filename = 'Accuracy_and_Loss.png'
             full_path = os.path.join(directory, filename)
-            fig = plt.gcf()
-            img = fig2img(fig)
-            img.save(full_path)
+            plt.savefig(full_path)
+
+            plt.show()
             
             quit()
 
