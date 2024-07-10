@@ -16,7 +16,6 @@ def fig2img(fig):
 def main():
     # The structure of this code is learnt from https://github.com/clovaai/voxceleb_trainer
     warnings.filterwarnings("ignore")
-
     parser = argparse.ArgumentParser(description = "TalkNet Training")
     # Training details
     parser.add_argument('--lr',           type=float, default=0.0001,help='Learning rate')
@@ -33,6 +32,7 @@ def main():
     # For download dataset only, for evaluation only
     parser.add_argument('--downloadAVA',     dest='downloadAVA', action='store_true', help='Only download AVA dataset and do related preprocess')
     parser.add_argument('--evaluation',      dest='evaluation', action='store_true', help='Only do evaluation by using pretrained model [pretrain_AVA.model]')
+    parser.add_argument('--useAvdiar',      action='store_true', help='using AVDIAR model or no?')
     args = parser.parse_args()
     # Data loader
     args = init_args(args)
@@ -118,7 +118,6 @@ def main():
             quit()
 
         epoch += 1
-    
 
 if __name__ == '__main__':
     main()
