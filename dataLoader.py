@@ -13,8 +13,14 @@ def generate_audio_set(dataPath, batchList):
     return audioSet
 
 def overlap(dataName, audio, audioSet):   
-    noiseName =  random.sample(set(list(audioSet.keys())) - {dataName}, 1)[0]
-    noiseAudio = audioSet[noiseName]    
+    try:
+        noiseName = random.sample(list(set(audioSet.keys()) - {dataName}), 1)[0]
+    except ValueError as e:
+        print("Error in sampling noiseName:", e)
+        print("audioSet keys:", list(audioSet.keys()))
+        print("dataName:", dataName)
+        raise
+    noiseAudio = audioSet[noiseName]
     snr = [random.uniform(-5, 5)]
     if len(noiseAudio) < len(audio):
         shortage = len(audio) - len(noiseAudio)
