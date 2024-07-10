@@ -103,7 +103,7 @@ def main():
             plt.xlabel('Epochs')
             plt.ylabel('Loss')
             plt.legend()
-            plt.title('Loss over 50 Epochs')
+            plt.title(f'Loss over {args.maxEpoch} Epochs')
 
             # Adjust layout
             plt.tight_layout()
