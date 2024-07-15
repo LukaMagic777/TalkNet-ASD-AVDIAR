@@ -20,11 +20,11 @@ class talkNetModel(nn.Module):
         self.audioEncoder  = audioEncoder(layers = [3, 4, 6, 3],  num_filters = [16, 32, 64, 128])
         
         # Audio-visual Cross Attention
-        self.crossA2V = attentionLayer(d_model = 128, nhead = 16)
-        self.crossV2A = attentionLayer(d_model = 128, nhead = 16)
+        self.crossA2V = attentionLayer(d_model = 128, nhead = 8)
+        self.crossV2A = attentionLayer(d_model = 128, nhead = 8)
 
         # Audio-visual Self Attention
-        self.selfAV = attentionLayer(d_model = 256, nhead = 16)
+        self.selfAV = attentionLayer(d_model = 256, nhead = 8)
 
     def forward_visual_frontend(self, x):
         B, T, W, H = x.shape  
