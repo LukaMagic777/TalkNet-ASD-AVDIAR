@@ -84,7 +84,7 @@ class talkNet(nn.Module):
 
     def loadParameters(self, path):
         selfState = self.state_dict()
-        loadedState = torch.load(path)
+        loadedState = torch.load(path, map_location=torch.device('cpu'))
         for name, param in loadedState.items():
             origName = name;
             if name not in selfState:
