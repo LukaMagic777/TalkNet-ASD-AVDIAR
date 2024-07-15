@@ -113,7 +113,7 @@ class talkNet(nn.Module):
             param.requires_grad = True
 
         for param in self.model.crossV2A.parameters():
-            param.requires_grad = False
+            param.requires_grad = True
 
         for param in self.model.selfAV.parameters():
             param.requires_grad = False
