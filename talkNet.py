@@ -96,3 +96,24 @@ class talkNet(nn.Module):
                 sys.stderr.write("Wrong parameter length: %s, model: %s, loaded: %s"%(origName, selfState[name].size(), loadedState[origName].size()))
                 continue
             selfState[name].copy_(param)
+
+        for param in self.model.visualFrontend.parameters():
+            param.requires_grad = False 
+
+        for param in self.model.visualTCN.parameters():
+            param.requires_grad = False
+
+        for param in self.model.visualConv1D.parameters():
+            param.requires_grad = False
+
+        for param in self.model.audioEncoder.parameters():
+            param.requires_grad = False
+        
+        for param in self.model.crossA2V.parameters():
+            param.requires_grad = False
+
+        for param in self.model.crossV2A.parameters():
+            param.requires_grad = False
+
+        for param in self.model.selfAV.parameters():
+            param.requires_grad = False
