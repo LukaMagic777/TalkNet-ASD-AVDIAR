@@ -107,10 +107,10 @@ class talkNet(nn.Module):
             param.requires_grad = False
 
         for param in self.model.audioEncoder.parameters():
-            param.requires_grad = False
+            param.requires_grad = True
         
         for param in self.model.crossA2V.parameters():
-            param.requires_grad = False
+            param.requires_grad = True
 
         for param in self.model.crossV2A.parameters():
             param.requires_grad = False
