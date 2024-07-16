@@ -67,9 +67,10 @@ def main():
     modelfiles.sort()  
     pretrain_model_path = 'pretrain_AVA.model'
     if os.path.exists(pretrain_model_path):
+        download_pretrain_model_AVA()
         s = talkNet(**vars(args))
-        s.loadParameters(pretrain_model_path)
-        print(f"Model {pretrain_model_path} loaded from previous state!")
+        s.loadParameters('pretrain_AVA.model')
+        print("Model %s loaded from previous state!"%('pretrain_AVA.model'))
         epoch = 1
     if len(modelfiles) >= 1:
         print("Model %s loaded from previous state!"%modelfiles[-1])
