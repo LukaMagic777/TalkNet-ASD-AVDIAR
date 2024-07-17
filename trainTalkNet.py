@@ -53,9 +53,8 @@ def main():
                         **vars(args))
     valLoader = torch.utils.data.DataLoader(loader, batch_size = 1, shuffle = False, num_workers = 16)
     
-    download_pretrain_model_AVA()
     if args.evaluation == True:
-        #download_pretrain_model_AVA()
+        download_pretrain_model_AVA()
         s = talkNet(**vars(args))
         s.loadParameters('pretrain_AVA.model')
         print("Model %s loaded from previous state!"%('pretrain_AVA.model'))
@@ -66,12 +65,6 @@ def main():
     modelfiles = glob.glob('%s/model_0*.model'%args.modelSavePath)
     modelfiles.sort()  
     pretrain_model_path = 'pretrain_AVA.model'
-    if os.path.exists(pretrain_model_path):
-        download_pretrain_model_AVA()
-        s = talkNet(**vars(args))
-        s.loadParameters('pretrain_AVA.model')
-        print("Model %s loaded from previous state!"%('pretrain_AVA.model'))
-        epoch = 1
     if len(modelfiles) >= 1:
         print("Model %s loaded from previous state!"%modelfiles[-1])
         epoch = int(os.path.splitext(os.path.basename(modelfiles[-1]))[0][6:]) + 1
@@ -80,6 +73,10 @@ def main():
     else:
         epoch = 1
         s = talkNet(epoch = epoch, **vars(args))
+        #for name in s.named_parameters():
+            #print(name)
+        download_pretrain_model_AVA()
+        s.loadParameters('pretrain_AVA.model')
 
     mAPs = []
     losses = []
