@@ -10,7 +10,7 @@ from model.talkNetModel import talkNetModel
 class talkNet(nn.Module):
     def __init__(self, lr = 0.0001, lrDecay = 0.95, **kwargs):
         super(talkNet, self).__init__()        
-        if torch.cuda.is_available(): #Set device to either gpu or cpu based on the runtime environment. Prefer using CUDA/GPU when available.
+        if torch.cuda.is_available():
             self.device='cuda'
         else:
             self.device='cpu'     
@@ -29,13 +29,12 @@ class talkNet(nn.Module):
         lr = self.optim.param_groups[0]['lr']        
         for num, (audioFeature, visualFeature, labels) in enumerate(loader, start=1):
             self.zero_grad()
-            audioEmbed = self.model.forward_audio_frontend(audioFeature[0].to(self.device)) # feedForward
+            audioEmbed = self.model.forward_audio_frontend(audioFeature[0].to(self.device)) 
             visualEmbed = self.model.forward_visual_frontend(visualFeature[0].to(self.device))
-            audioEmbed, visualEmbed = self.model.forward_cross_attention(audioEmbed, visualEmbed)
-            outsAV= self.model.forward_audio_visual_backend(audioEmbed, visualEmbed)  
+            outsAV = self.model.forward_audio_visual_backend(audioEmbed, visualEmbed)  
             outsA = self.model.forward_audio_backend(audioEmbed)
             outsV = self.model.forward_visual_backend(visualEmbed)
-            labels = labels[0].reshape((-1)).to(self.device) # Loss
+            labels = labels[0].reshape((-1)).to(self.device)
             nlossAV, _, _, prec = self.lossAV.forward(outsAV, labels)
             nlossA = self.lossA.forward(outsA, labels)
             nlossV = self.lossV.forward(outsV, labels)
@@ -59,8 +58,7 @@ class talkNet(nn.Module):
             with torch.no_grad():                
                 audioEmbed  = self.model.forward_audio_frontend(audioFeature[0].to(self.device))
                 visualEmbed = self.model.forward_visual_frontend(visualFeature[0].to(self.device))
-                audioEmbed, visualEmbed = self.model.forward_cross_attention(audioEmbed, visualEmbed)
-                outsAV= self.model.forward_audio_visual_backend(audioEmbed, visualEmbed)  
+                outsAV = self.model.forward_audio_visual_backend(audioEmbed, visualEmbed)  
                 labels = labels[0].reshape((-1)).to(self.device)             
                 _, predScore, _, _ = self.lossAV.forward(outsAV, labels)    
                 predScore = predScore[:,1].detach().cpu().numpy()
@@ -107,13 +105,4 @@ class talkNet(nn.Module):
             param.requires_grad = False
 
         for param in self.model.audioEncoder.parameters():
-            param.requires_grad = False
-        
-        for param in self.model.crossA2V.parameters():
-            param.requires_grad = False
-
-        for param in self.model.crossV2A.parameters():
-            param.requires_grad = False
-
-        for param in self.model.selfAV.parameters():
             param.requires_grad = False

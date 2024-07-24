@@ -79,18 +79,6 @@ def main():
                 param.requires_grad=True
             else:
                 param.requires_grad=False
-    elif args.finetune_mode=='ft_sa':
-        for name, param in s.named_parameters():
-            if ('loss' in name) or ('selfAV' in name):
-                param.requires_grad=True
-            else:
-                param.requires_grad=False
-    elif args.finetune_mode=='ft_cr':
-        for name, param in s.named_parameters():
-            if ('loss' in name) or ('selfAV' in name) or ('crossA2V' in name) or ('crossV2A' in name):
-                param.requires_grad=True
-            else:
-                param.requires_grad=False
     elif args.finetune_mode=='no_ft':
         modelfiles = glob.glob('%s/model_0*.model'%args.modelSavePath)
         modelfiles.sort()  
