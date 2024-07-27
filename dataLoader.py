@@ -1,6 +1,5 @@
 import os, torch, numpy, cv2, random, glob, python_speech_features
 from scipy.io import wavfile
-from torchvision.transforms import RandomCrop
 
 def generate_audio_set(dataPath, batchList, useAvdiar):
     audioSet = {}
@@ -16,7 +15,7 @@ def generate_audio_set(dataPath, batchList, useAvdiar):
     return audioSet
 
 def overlap(dataName, audio, audioSet):   
-    noiseName =  random.sample(set(list(audioSet.keys())) - {dataName}, 1)[0]
+    noiseName = random.sample(set(list(audioSet.keys())) - {dataName}, 1)[0]
     noiseAudio = audioSet[noiseName]    
     snr = [random.uniform(-5, 5)]
     if len(noiseAudio) < len(audio):
@@ -30,58 +29,86 @@ def overlap(dataName, audio, audioSet):
     audio = audio + noiseAudio    
     return audio.astype(numpy.int16)
 
-def load_audio(data, dataPath, numFrames, audioAug, audioSet = None):
+def load_audio(data, dataPath, numFrames, audioAug, audioSet=None, randomInterval=False):
     dataName = data[0]
-    fps = float(data[2])    
-    audio = audioSet[dataName]    
-    if audioAug == True:
-        augType = random.randint(0,1)
+    fps = float(data[2])
+    audio = audioSet[dataName]
+    
+    if audioAug:
+        augType = random.randint(0, 1)
         if augType == 1:
             audio = overlap(dataName, audio, audioSet)
-        else:
-            audio = audio
-    # fps is not always 25, in order to align the visual, we modify the window and step in MFCC extraction process based on fps
-    audio = python_speech_features.mfcc(audio, 16000, numcep = 13, winlen = 0.025 * 25 / fps, winstep = 0.010 * 25 / fps)
+    
+    # Randomly select a 1-second interval for training
+    sample_rate = 16000
+    interval_length = sample_rate
+    max_start = len(audio) - interval_length
+
+    if max_start < 0:
+        max_start = 0  # Ensure max_start is not negative
+
+    if randomInterval:
+        start = random.randint(0, max_start)
+    else:
+        # For evaluation, use fixed 1-second increments
+        start = 0
+
+    audio = audio[start:start + interval_length]
+    audio = python_speech_features.mfcc(audio, sample_rate, numcep=13, winlen=0.025 * 25 / fps, winstep=0.010 * 25 / fps)
+    
     maxAudio = int(numFrames * 4)
     if audio.shape[0] < maxAudio:
-        shortage    = maxAudio - audio.shape[0]
-        audio     = numpy.pad(audio, ((0, shortage), (0,0)), 'wrap')
-    audio = audio[:int(round(numFrames * 4)),:]  
+        shortage = maxAudio - audio.shape[0]
+        audio = numpy.pad(audio, ((0, shortage), (0, 0)), 'wrap')
+    audio = audio[:int(round(numFrames * 4)), :]  
     return audio
 
-def load_visual(data, dataPath, numFrames, visualAug, useAvdiar): 
+
+def load_visual(data, dataPath, numFrames, visualAug, useAvdiar, randomInterval=False): 
     dataName = data[0]
-    if(useAvdiar):
+    if useAvdiar:
         videoName = data[0][:13]
     else:
         videoName = data[0][:11]
     faceFolderPath = os.path.join(dataPath, videoName, dataName)
-    faceFiles = glob.glob("%s/*.jpg"%faceFolderPath)
+    faceFiles = glob.glob("%s/*.jpg" % faceFolderPath)
     sortedFaceFiles = sorted(faceFiles, key=lambda data: (float(data.split('/')[-1][:-4])), reverse=False) 
-    faces = []
+
     H = 112
-    if visualAug == True:
-        new = int(H*random.uniform(0.7, 1))
+    faces = []
+
+    if visualAug:
+        new = int(H * random.uniform(0.7, 1))
         x, y = numpy.random.randint(0, H - new), numpy.random.randint(0, H - new)
-        M = cv2.getRotationMatrix2D((H/2,H/2), random.uniform(-15, 15), 1)
+        M = cv2.getRotationMatrix2D((H / 2, H / 2), random.uniform(-15, 15), 1)
         augType = random.choice(['orig', 'flip', 'crop', 'rotate']) 
     else:
         augType = 'orig'
-    for faceFile in sortedFaceFiles[:numFrames]:
+
+    # Randomly select a 1-second interval for training
+    if randomInterval:
+        max_start = len(sortedFaceFiles) - numFrames
+        start = random.randint(0, max_start)
+    else:
+        # For evaluation, use fixed 1-second increments
+        start = 0
+
+    selectedFiles = sortedFaceFiles[start:start + numFrames]
+    
+    for faceFile in selectedFiles:
         face = cv2.imread(faceFile)
         face = cv2.cvtColor(face, cv2.COLOR_BGR2GRAY)
-        face = cv2.resize(face, (H,H))
+        face = cv2.resize(face, (H, H))
         if augType == 'orig':
             faces.append(face)
         elif augType == 'flip':
             faces.append(cv2.flip(face, 1))
         elif augType == 'crop':
-            faces.append(cv2.resize(face[y:y+new, x:x+new] , (H,H))) 
+            faces.append(cv2.resize(face[y:y + new, x:x + new], (H, H))) 
         elif augType == 'rotate':
-            faces.append(cv2.warpAffine(face, M, (H,H)))
+            faces.append(cv2.warpAffine(face, M, (H, H)))
     faces = numpy.array(faces)
     return faces
-
 
 def load_label(data, numFrames):
     res = []
@@ -94,7 +121,7 @@ def load_label(data, numFrames):
 
 class train_loader(object):
     def __init__(self, trialFileName, audioPath, visualPath, batchSize, useAvdiar, **kwargs):
-        self.audioPath  = audioPath
+        self.audioPath = audioPath
         self.visualPath = visualPath
         self.miniBatch = []
         self.useAvdiar = useAvdiar
@@ -103,22 +130,22 @@ class train_loader(object):
         sortedMixLst = sorted(mixLst, key=lambda data: (int(data.split('\t')[1]), int(data.split('\t')[-1])), reverse=True)         
         start = 0        
         while True:
-          length = int(sortedMixLst[start].split('\t')[1])
-          end = min(len(sortedMixLst), start + max(int(batchSize / length), 1))
-          self.miniBatch.append(sortedMixLst[start:end])
-          if end == len(sortedMixLst):
-              break
-          start = end     
+            length = int(sortedMixLst[start].split('\t')[1])
+            end = min(len(sortedMixLst), start + max(int(batchSize / length), 1))
+            self.miniBatch.append(sortedMixLst[start:end])
+            if end == len(sortedMixLst):
+                break
+            start = end     
 
     def __getitem__(self, index):
-        batchList    = self.miniBatch[index]
-        numFrames   = int(batchList[-1].split('\t')[1])
+        batchList = self.miniBatch[index]
+        numFrames = int(batchList[-1].split('\t')[1])
         audioFeatures, visualFeatures, labels = [], [], []
         audioSet = generate_audio_set(self.audioPath, batchList, useAvdiar=self.useAvdiar) # load the audios in this batch to do augmentation
         for line in batchList:
             data = line.split('\t')            
-            audioFeatures.append(load_audio(data, self.audioPath, numFrames, audioAug = True, audioSet = audioSet))  
-            visualFeatures.append(load_visual(data, self.visualPath,numFrames, visualAug = True, useAvdiar=self.useAvdiar))
+            audioFeatures.append(load_audio(data, self.audioPath, numFrames, audioAug=True, audioSet=audioSet, randomInterval=True))  
+            visualFeatures.append(load_visual(data, self.visualPath, numFrames, visualAug=True, useAvdiar=self.useAvdiar, randomInterval=True))
             labels.append(load_label(data, numFrames))
         return torch.FloatTensor(numpy.array(audioFeatures)), \
                torch.FloatTensor(numpy.array(visualFeatures)), \
@@ -127,21 +154,20 @@ class train_loader(object):
     def __len__(self):
         return len(self.miniBatch)
 
-
 class val_loader(object):
     def __init__(self, trialFileName, audioPath, visualPath, useAvdiar, **kwargs):
-        self.audioPath  = audioPath
+        self.audioPath = audioPath
         self.visualPath = visualPath
         self.miniBatch = open(trialFileName).read().splitlines()
         self.useAvdiar = useAvdiar
 
     def __getitem__(self, index):
-        line       = [self.miniBatch[index]]
-        numFrames  = int(line[0].split('\t')[1])
-        audioSet   = generate_audio_set(self.audioPath, line, useAvdiar=self.useAvdiar)        
+        line = [self.miniBatch[index]]
+        numFrames = int(line[0].split('\t')[1])
+        audioSet = generate_audio_set(self.audioPath, line, useAvdiar=self.useAvdiar)        
         data = line[0].split('\t')
-        audioFeatures = [load_audio(data, self.audioPath, numFrames, audioAug = False, audioSet = audioSet)]
-        visualFeatures = [load_visual(data, self.visualPath,numFrames, visualAug = False, useAvdiar=self.useAvdiar)]
+        audioFeatures = [load_audio(data, self.audioPath, numFrames, audioAug=False, audioSet=audioSet, randomInterval=False)]
+        visualFeatures = [load_visual(data, self.visualPath, numFrames, visualAug=False, useAvdiar=self.useAvdiar, randomInterval=False)]
         labels = [load_label(data, numFrames)]         
         return torch.FloatTensor(numpy.array(audioFeatures)), \
                torch.FloatTensor(numpy.array(visualFeatures)), \

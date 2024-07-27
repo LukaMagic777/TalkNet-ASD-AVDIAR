@@ -33,6 +33,7 @@ def main():
     parser.add_argument('--downloadAVA',     dest='downloadAVA', action='store_true', help='Only download AVA dataset and do related preprocess')
     parser.add_argument('--evaluation',      dest='evaluation', action='store_true', help='Only do evaluation by using pretrained model [pretrain_AVA.model]')
     parser.add_argument('--useAvdiar',      action='store_true', help='using AVDIAR model or no?')
+    parser.add_argument('--finetune_mode', type=str, default='no_ft', choices=['no_ft', 'ft_det', 'ft_sa', 'ft_cr'], help='Argument to finetune TalkNet.')
     args = parser.parse_args()
     # Data loader
     args = init_args(args)
@@ -53,25 +54,44 @@ def main():
                         **vars(args))
     valLoader = torch.utils.data.DataLoader(loader, batch_size = 1, shuffle = False, num_workers = 16)
 
+    modelfiles = glob.glob('%s/model_0*.model'%args.modelSavePath)
+    modelfiles.sort()  
+    pretrain_model_path = 'pretrain_AVA.model'
     if args.evaluation == True:
         download_pretrain_model_AVA()
         s = talkNet(**vars(args))
-        s.loadParameters('pretrain_AVA.model')
+        s.loadParameters('pretrain_AVA.model', map_location=torch.device(s.device))
         print("Model %s loaded from previous state!"%('pretrain_AVA.model'))
         mAP = s.evaluate_network(loader = valLoader, **vars(args))
         print("mAP %2.2f%%"%(mAP))
         quit()
-
-    modelfiles = glob.glob('%s/model_0*.model'%args.modelSavePath)
-    modelfiles.sort()  
-    if len(modelfiles) >= 1:
-        print("Model %s loaded from previous state!"%modelfiles[-1])
-        epoch = int(os.path.splitext(os.path.basename(modelfiles[-1]))[0][6:]) + 1
-        s = talkNet(epoch = epoch, **vars(args))
-        s.loadParameters(modelfiles[-1])
-    else:
+    
+    if args.finetune_mode != 'no_ft':
+        download_pretrain_model_AVA()
+        s = talkNet(**vars(args))
+        s.loadParameters('pretrain_AVA.model')
+        print("Model %s loaded from previous state!"%('pretrain_AVA.model'))
         epoch = 1
-        s = talkNet(epoch = epoch, **vars(args))
+
+    if args.finetune_mode=='ft_det':
+        for name, param in s.named_parameters():
+            if 'loss' in name:
+                param.requires_grad=True
+            else:
+                param.requires_grad=False
+    elif args.finetune_mode=='no_ft':
+        modelfiles = glob.glob('%s/model_0*.model'%args.modelSavePath)
+        modelfiles.sort()  
+        if len(modelfiles) >= 1:
+            print("Model %s loaded from previous state!"%modelfiles[-1])
+            epoch = int(os.path.splitext(os.path.basename(modelfiles[-1]))[0][6:]) + 1
+            s = talkNet(epoch = epoch, **vars(args))
+            s.loadParameters(modelfiles[-1], map_location=torch.device(s.device))
+        else:
+            epoch = 1
+            s = talkNet(epoch = epoch, **vars(args))
+    else:
+        print('finetune_mode argument is invalid.')
 
     mAPs = []
     losses = []
