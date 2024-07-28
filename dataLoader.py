@@ -33,38 +33,45 @@ def load_audio(data, dataPath, numFrames, audioAug, audioSet=None, randomInterva
     dataName = data[0]
     fps = float(data[2])
     audio = audioSet[dataName]
-    
+
     if audioAug:
         augType = random.randint(0, 1)
         if augType == 1:
             audio = overlap(dataName, audio, audioSet)
-    
-    # Randomly select a 1-second interval for training
+
     sample_rate = 16000
     interval_length = sample_rate
-    max_start = len(audio) - interval_length
 
-    if max_start < 0:
-        max_start = 0  # Ensure max_start is not negative
-
+    audio_segments = []
     if randomInterval:
+        # For training: randomly select a 1-second interval
+        max_start = len(audio) - interval_length
+        if max_start < 0:
+            max_start = 0
         start = random.randint(0, max_start)
+        audio = audio[start:start + interval_length]
+        audio = python_speech_features.mfcc(audio, sample_rate, numcep=13, winlen=0.025 * 25 / fps, winstep=0.010 * 25 / fps)
+        audio_segments.append(audio)
     else:
-        # For evaluation, use fixed 1-second increments
-        start = 0
+        # For evaluation: use every 1-second segment
+        for start in range(0, len(audio), interval_length):
+            segment = audio[start:start + interval_length]
+            if len(segment) < interval_length:
+                # Padding if the last segment is shorter than 1 second
+                segment = numpy.pad(segment, (0, interval_length - len(segment)), 'wrap')
+            mfcc = python_speech_features.mfcc(segment, sample_rate, numcep=13, winlen=0.025 * 25 / fps, winstep=0.010 * 25 / fps)
+            audio_segments.append(mfcc)
 
-    audio = audio[start:start + interval_length]
-    audio = python_speech_features.mfcc(audio, sample_rate, numcep=13, winlen=0.025 * 25 / fps, winstep=0.010 * 25 / fps)
-    
+    # Stack all segments and ensure correct shape
+    audio = numpy.vstack(audio_segments)
     maxAudio = int(numFrames * 4)
     if audio.shape[0] < maxAudio:
         shortage = maxAudio - audio.shape[0]
         audio = numpy.pad(audio, ((0, shortage), (0, 0)), 'wrap')
-    audio = audio[:int(round(numFrames * 4)), :]  
+    audio = audio[:maxAudio, :]
     return audio
 
-
-def load_visual(data, dataPath, numFrames, visualAug, useAvdiar, randomInterval=False): 
+def load_visual(data, dataPath, numFrames, visualAug, useAvdiar, randomInterval=False):
     dataName = data[0]
     if useAvdiar:
         videoName = data[0][:13]
@@ -72,7 +79,7 @@ def load_visual(data, dataPath, numFrames, visualAug, useAvdiar, randomInterval=
         videoName = data[0][:11]
     faceFolderPath = os.path.join(dataPath, videoName, dataName)
     faceFiles = glob.glob("%s/*.jpg" % faceFolderPath)
-    sortedFaceFiles = sorted(faceFiles, key=lambda data: (float(data.split('/')[-1][:-4])), reverse=False) 
+    sortedFaceFiles = sorted(faceFiles, key=lambda data: (float(data.split('/')[-1][:-4])), reverse=False)
 
     H = 112
     faces = []
@@ -81,20 +88,17 @@ def load_visual(data, dataPath, numFrames, visualAug, useAvdiar, randomInterval=
         new = int(H * random.uniform(0.7, 1))
         x, y = numpy.random.randint(0, H - new), numpy.random.randint(0, H - new)
         M = cv2.getRotationMatrix2D((H / 2, H / 2), random.uniform(-15, 15), 1)
-        augType = random.choice(['orig', 'flip', 'crop', 'rotate']) 
+        augType = random.choice(['orig', 'flip', 'crop', 'rotate'])
     else:
         augType = 'orig'
 
-    # Randomly select a 1-second interval for training
     if randomInterval:
         max_start = len(sortedFaceFiles) - numFrames
         start = random.randint(0, max_start)
+        selectedFiles = sortedFaceFiles[start:start + numFrames]
     else:
-        # For evaluation, use fixed 1-second increments
-        start = 0
+        selectedFiles = sortedFaceFiles
 
-    selectedFiles = sortedFaceFiles[start:start + numFrames]
-    
     for faceFile in selectedFiles:
         face = cv2.imread(faceFile)
         face = cv2.cvtColor(face, cv2.COLOR_BGR2GRAY)
@@ -104,11 +108,12 @@ def load_visual(data, dataPath, numFrames, visualAug, useAvdiar, randomInterval=
         elif augType == 'flip':
             faces.append(cv2.flip(face, 1))
         elif augType == 'crop':
-            faces.append(cv2.resize(face[y:y + new, x:x + new], (H, H))) 
+            faces.append(cv2.resize(face[y:y + new, x:x + new], (H, H)))
         elif augType == 'rotate':
             faces.append(cv2.warpAffine(face, M, (H, H)))
     faces = numpy.array(faces)
     return faces
+
 
 def load_label(data, numFrames):
     res = []
