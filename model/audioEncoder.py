@@ -51,14 +51,37 @@ class SELayer(nn.Module):
         y = self.fc(y).view(b, c, 1, 1)
         return x * y
 
+class ConformerLayer(nn.Module):
+    def __init__(self, d_model, nhead, dim_feedforward, dropout=0.1):
+        super(ConformerLayer, self).__init__()
+        self.self_attn = nn.MultiheadAttention(d_model, nhead, dropout=dropout)
+        self.conv = nn.Conv1d(d_model, dim_feedforward, kernel_size=1)
+        self.relu = nn.ReLU()
+        self.fc = nn.Linear(dim_feedforward, d_model)
+        self.dropout = nn.Dropout(dropout)
+        self.norm = nn.LayerNorm(d_model)
+
+    def forward(self, x):
+        x = x.permute(1, 0, 2)  # (seq_len, batch_size, d_model)
+        x2 = self.norm(x)
+        attn_output, _ = self.self_attn(x2, x2, x2)
+        x = x + self.dropout(attn_output)
+        
+        x2 = x.permute(1, 2, 0)  # (batch_size, d_model, seq_len)
+        x2 = self.relu(self.conv(x2))
+        x2 = self.fc(x2.permute(2, 0, 1))
+        x = x + self.dropout(x2)
+        x = x.permute(1, 0, 2)
+        
+        return x
+
 class audioEncoder(nn.Module):
-    def __init__(self, layers, num_filters, **kwargs):
+    def __init__(self, layers, num_filters):
         super(audioEncoder, self).__init__()
         block = SEBasicBlock
-        self.inplanes   = num_filters[0]
+        self.inplanes = num_filters[0]
 
-        self.conv1 = nn.Conv2d(1, num_filters[0] , kernel_size=7, stride=(2, 1), padding=3,
-                               bias=False)
+        self.conv1 = nn.Conv2d(1, num_filters[0], kernel_size=7, stride=(2, 1), padding=3, bias=False)
         self.bn1 = nn.BatchNorm2d(num_filters[0])
         self.relu = nn.ReLU(inplace=True)
 
@@ -66,7 +89,15 @@ class audioEncoder(nn.Module):
         self.layer2 = self._make_layer(block, num_filters[1], layers[1], stride=(2, 2))
         self.layer3 = self._make_layer(block, num_filters[2], layers[2], stride=(2, 2))
         self.layer4 = self._make_layer(block, num_filters[3], layers[3], stride=(1, 1))
-        out_dim = num_filters[3] * block.expansion
+
+        # Adjust this projection layer to match the expected d_model
+        self.proj_layer = nn.Conv1d(num_filters[3], 128, kernel_size=1)
+        
+        self.d_model = 128
+        self.nhead = 8
+        self.dim_feedforward = 512
+        self.conformer_layers = 4
+        self.conformer = nn.ModuleList([ConformerLayer(self.d_model, self.nhead, self.dim_feedforward) for _ in range(self.conformer_layers)])
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -79,8 +110,7 @@ class audioEncoder(nn.Module):
         downsample = None
         if stride != 1 or self.inplanes != planes * block.expansion:
             downsample = nn.Sequential(
-                nn.Conv2d(self.inplanes, planes * block.expansion,
-                          kernel_size=1, stride=stride, bias=False),
+                nn.Conv2d(self.inplanes, planes * block.expansion, kernel_size=1, stride=stride, bias=False),
                 nn.BatchNorm2d(planes * block.expansion),
             )
 
@@ -101,8 +131,16 @@ class audioEncoder(nn.Module):
         x = self.layer2(x)
         x = self.layer3(x)
         x = self.layer4(x)
+        
+        # Pooling and projection to match d_model
         x = torch.mean(x, dim=2, keepdim=True)
         x = x.view((x.size()[0], x.size()[1], -1))
         x = x.transpose(1, 2)
+
+        x = self.proj_layer(x.permute(0, 2, 1))
+        x = x.transpose(1, 2)
+
+        for layer in self.conformer:
+            x = layer(x)
 
         return x
